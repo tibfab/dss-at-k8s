@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dss
+spec:
+  template:
+    spec:
+      containers:
+        - name: dss
+          volumeMounts:
+            - name: dss-data
+              mountPath: /media/dss-design-node
+
+      volumes:
+        #- name: dss-data
+        #  persistentVolumeClaim:
+        #    claimName: design-node
+        - name: dss-data
+          hostPath:
+            path: /Users/tiborfabian/dss/design-node

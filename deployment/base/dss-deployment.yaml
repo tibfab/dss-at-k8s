@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dss
+  labels:
+    app: dss
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: dss
+  template:
+    metadata:
+      labels:
+        app: dss
+    spec:
+      securityContext:
+        fsGroup: 1000 # DSS user ID needed to read secret kubetcl-config as non root user
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: dss
+          image: dss-node-image
+          imagePullPolicy: Always
+          command: ['/bin/bash']
+          args:
+            - -ci
+            - ./startup.sh
+          env:
+            - name: DSS_NODE_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: dss-node-type
+                  key: DSS_NODE_TYPE
+            - name: DOCKER_HOST
+              value: tcp://localhost:2375
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          securityContext:
+              privileged: true
+          volumeMounts:
+            - name: kubectl-config
+              mountPath: /home/ubuntu/.kube
+            - name: shared-storage
+              mountPath: /share
+            - name: gitlab-registry-cred
+              mountPath: /gitlab-repo/credentials
+          lifecycle:
+            preStop:
+              exec:
+                command: ['/bin/bash', '-c', './pre-stop.sh']
+        - name: dind
+          image: docker:19.03.9-dind
+          resources:
+            requests:
+              cpu: 250m
+              memory: 250Mi
+            limits:
+              cpu: 250m
+              memory: 250Mi
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: ''
+          securityContext:
+              privileged: true
+          volumeMounts:
+            - name: docker-storage
+              mountPath: /var/lib/docker
+        - name: dood
+          image: docker:19.03.8
+          command: ['tail', '-f', '/dev/null']
+          resources:
+            requests:
+              cpu: 200m
+              memory: 250Mi
+            limits:
+              cpu: 200m
+              memory: 250Mi
+          env:
+            - name: DSS_NODE_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: dss-node-type
+                  key: DSS_NODE_TYPE
+          envFrom:
+            - secretRef:
+                name: gitlab-registry-cred
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run
+            - name: shared-storage
+              mountPath: /share
+      #imagePullSecrets:
+      #  - name: gitlab-regcred
+      volumes:
+        - name: docker-storage
+          emptyDir: {}
+        - name: docker-sock
+          hostPath:
+            path: /var/run
+        - name: shared-storage
+          emptyDir: {}
+        - name: kubectl-config
+          secret:
+            secretName: kubectl-config
+            defaultMode: 0400
+        - name: gitlab-registry-cred
+          secret:
+            secretName: gitlab-registry-cred
+

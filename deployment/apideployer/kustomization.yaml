@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+nameSuffix: -apideployer-node
+
+commonLabels:
+  app: dss-apideployer-node
+
+images:
+  - name: dss-node-image
+    newName: registry.gitlab.com/tibor_fabian/dku-dss-k8s/dss-apideployer-node
+    newTag: dss-8.0.2-2020.10.14-13.34.27
+
+configMapGenerator:
+  - name: dss-node-type
+    literals:    
+    - DSS_NODE_TYPE=apideployer
+
+bases:
+  - ../base
+
+patchesStrategicMerge:
+  - resources.yaml
+  - volumes.yaml

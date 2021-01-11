@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dss
+spec:
+  template:
+    spec:
+      containers:
+        - name: dss
+          volumeMounts:
+            - name: dss-data
+              mountPath: /media/dss-apideployer-node
+
+      volumes:
+        - name: dss-data
+          hostPath:
+            path: /Users/tiborfabian/dss/apideployer-node
